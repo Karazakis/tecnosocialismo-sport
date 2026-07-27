@@ -1,12 +1,14 @@
 import { get, list, put } from "@vercel/blob";
 import { activityXp, levelFromXp, newProfile } from "./gamification";
-import type { Activity, ActivityType, AthleteProfile, Competition, Lesson } from "./model";
+import type { Activity, ActivityType, AthleteProfile, Competition, Lesson, Place, PlaceAccess, PlaceType, PracticeMode } from "./model";
 import { resolveSport } from "./sports";
 
 const PROFILE_PREFIX = "sport/profiles/";
 const LESSON_PREFIX = "sport/lessons/";
 const COMPETITION_PREFIX = "sport/competitions/";
 const ACTIVITY_PREFIX = "sport/activities/";
+const PLACE_PREFIX = "sport/places/";
+type StoredPlace = Place & { ratingsByUser: Record<string,number> };
 
 export async function readProfile(id: string) {
   return readJson<AthleteProfile>(`${PROFILE_PREFIX}${safeKey(id)}.json`);
@@ -26,7 +28,7 @@ export async function listProfiles() {
   return records.filter((item): item is AthleteProfile => Boolean(item)).sort((a,b) => b.xp - a.xp);
 }
 
-export async function awardActivity(input: { userId: string; userName: string; sport: string; type: ActivityType; title: string; minutes: number }) {
+export async function awardActivity(input: { userId: string; userName: string; sport: string; type: ActivityType; title: string; minutes: number; practiceMode: PracticeMode; placeId?: string; placeName?: string }) {
   const sport = resolveSport(input.sport);
   const now = new Date().toISOString();
   const xp = activityXp(input.type, input.minutes);
@@ -46,7 +48,7 @@ export async function awardActivity(input: { userId: string; userName: string; s
     sports: [...profile.sports.filter((item) => item.sportId !== sport.id), { sportId:sport.id, name:sport.name, xp:skillXp, level:levelFromXp(skillXp) }].sort((a,b) => b.xp - a.xp),
     updatedAt: now,
   };
-  const activity: Activity = { id:crypto.randomUUID(), userId:input.userId, userName:input.userName, sportId:sport.id, sportName:sport.name, type:input.type, title:input.title, minutes:input.minutes, xp, createdAt:now };
+  const activity: Activity = { id:crypto.randomUUID(), userId:input.userId, userName:input.userName, sportId:sport.id, sportName:sport.name, type:input.type, title:input.title, minutes:input.minutes, practiceMode:input.practiceMode, placeId:input.placeId, placeName:input.placeName, xp, createdAt:now };
   const time = now.replace(/[:.]/g,"-");
   await Promise.all([
     writeJson(`${PROFILE_PREFIX}${safeKey(input.userId)}.json`, updated, true),
@@ -95,6 +97,45 @@ export async function joinCompetition(id: string, userId: string) {
   const updated = { ...competition, entrantIds:[...competition.entrantIds,userId] };
   await writeJson(`${COMPETITION_PREFIX}${id}.json`, updated, true);
   return { competition:updated, joined:true } as const;
+}
+
+export async function listPlaces() {
+  const result = await list({ prefix:PLACE_PREFIX, limit:1000 });
+  const records = await Promise.all(result.blobs.map((blob) => readJson<StoredPlace>(blob.url)));
+  return records.filter((item):item is StoredPlace=>Boolean(item)).map(publicPlace).sort((a,b)=>b.ratingCount-a.ratingCount||b.rating-a.rating);
+}
+
+export async function savePlace(input:{ownerId:string;ownerName:string;name:string;type:PlaceType;description:string;address:string;city:string;latitude:number;longitude:number;access:PlaceAccess;indoor:boolean;accessible:boolean;equipment:string[];sports:string[]}) {
+  const now=new Date().toISOString();
+  const place:StoredPlace={id:crypto.randomUUID(),...input,rating:0,ratingCount:0,ratingsByUser:{},createdAt:now,updatedAt:now};
+  await writeJson(`${PLACE_PREFIX}${place.id}.json`,place,false);
+  return publicPlace(place);
+}
+
+export async function ratePlace(id:string,userId:string,score:number) {
+  const current=isUuid(id)?await readJson<StoredPlace>(`${PLACE_PREFIX}${id}.json`):null;
+  if(!current)return {error:"Luogo non trovato.",status:404} as const;
+  const firstRating=!Object.prototype.hasOwnProperty.call(current.ratingsByUser??{},userId);
+  const ratingsByUser={...(current.ratingsByUser??{}),[userId]:score};
+  const values=Object.values(ratingsByUser);
+  const updated:StoredPlace={...current,ratingsByUser,ratingCount:values.length,rating:values.reduce((sum,value)=>sum+value,0)/values.length,updatedAt:new Date().toISOString()};
+  await writeJson(`${PLACE_PREFIX}${id}.json`,updated,true);
+  return {place:publicPlace(updated),firstRating} as const;
+}
+
+export async function awardCommunityContribution(input:{userId:string;userName:string;type:"mapping"|"rating";placeId:string;placeName:string}) {
+  const profile=await ensureProfile(input.userId,input.userName); const now=new Date().toISOString(); const xp=activityXp(input.type,0);
+  const updated:AthleteProfile={...profile,name:input.userName,xp:profile.xp+xp,level:levelFromXp(profile.xp+xp),placesMapped:(profile.placesMapped??0)+(input.type==="mapping"?1:0),ratingsGiven:(profile.ratingsGiven??0)+(input.type==="rating"?1:0),updatedAt:now};
+  const activity:Activity={id:crypto.randomUUID(),userId:input.userId,userName:input.userName,sportId:"community-map",sportName:"Mappa dei luoghi",type:input.type,title:input.type==="mapping"?`Ha mappato ${input.placeName}`:`Ha valutato ${input.placeName}`,minutes:0,practiceMode:"luogo",placeId:input.placeId,placeName:input.placeName,xp,createdAt:now};
+  const time=now.replace(/[:.]/g,"-");
+  await Promise.all([writeJson(`${PROFILE_PREFIX}${safeKey(input.userId)}.json`,updated,true),writeJson(`${ACTIVITY_PREFIX}${safeKey(input.userId)}/${time}-${activity.id}.json`,activity,false)]);
+  return {profile:updated,activity};
+}
+
+function publicPlace(place:StoredPlace):Place {
+  const {ratingsByUser,...publicRecord}=place;
+  void ratingsByUser;
+  return publicRecord;
 }
 
 async function writeJson(pathname: string, value: unknown, allowOverwrite: boolean) {

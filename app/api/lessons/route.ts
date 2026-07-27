@@ -4,7 +4,7 @@ import { resolveSport } from "@/lib/sports";
 import { saveLesson } from "@/lib/store";
 
 const bands = new Set<SkillBand>(["aperto","principiante","intermedio","avanzato"]);
-const formats = new Set<EventFormat>(["in-presenza","online"]);
+const formats = new Set<EventFormat>(["in-presenza","online","ibrida"]);
 
 export async function POST(request: Request) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return Response.json({ error:"Archivio non configurato." }, { status:503 });
@@ -15,9 +15,10 @@ export async function POST(request: Request) {
   const level = bands.has(payload?.level as SkillBand) ? payload?.level as SkillBand : "aperto";
   const format = formats.has(payload?.format as EventFormat) ? payload?.format as EventFormat : "in-presenza";
   const city = format === "online" ? "Online" : safeText(payload?.city,80);
+  const placeId = safeText(payload?.placeId,80) || undefined;
   const startsAt = safeDate(payload?.startsAt);
   if (!title || !description || !startsAt || !city) return Response.json({ error:"Completa titolo, descrizione, luogo e data." }, { status:400 });
-  const lesson:Lesson = { id:crypto.randomUUID(),hostId:user.id,hostName:user.name,sportId:sport.id,sportName:sport.name,title,description,level,format,city,startsAt,durationMinutes:safeNumber(payload?.durationMinutes,20,240,60),capacity:safeNumber(payload?.capacity,1,40,6),participantIds:[],createdAt:new Date().toISOString() };
+  const lesson:Lesson = { id:crypto.randomUUID(),hostId:user.id,hostName:user.name,sportId:sport.id,sportName:sport.name,title,description,level,format,city,placeId,startsAt,durationMinutes:safeNumber(payload?.durationMinutes,20,240,60),capacity:safeNumber(payload?.capacity,1,40,6),participantIds:[],createdAt:new Date().toISOString() };
   await saveLesson(lesson);
   return Response.json({ lesson }, { status:201 });
 }

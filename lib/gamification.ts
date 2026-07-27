@@ -25,11 +25,11 @@ export function levelTitle(level: number) {
 
 export function activityXp(type: ActivityType, minutes: number) {
   const duration = Math.max(10, Math.min(240, minutes));
-  const base: Record<ActivityType, number> = { training: 18, lesson: 45, teaching: 90, competition: 110, victory: 220 };
+  const base: Record<ActivityType, number> = { training: 18, lesson: 45, teaching: 90, competition: 110, victory: 220, mapping:75, rating:10 };
   return Math.round(base[type] + Math.min(80, duration * .45));
 }
 
 export function newProfile(id: string, name: string): AthleteProfile {
   const now = new Date().toISOString();
-  return { id, name, xp:0, level:1, streak:0, sessions:0, lessonsTaught:0, competitions:0, victories:0, sports:[], createdAt:now, updatedAt:now };
+  return { id, name, xp:0, level:1, streak:0, sessions:0, lessonsTaught:0, competitions:0, victories:0, placesMapped:0, ratingsGiven:0, sports:[], createdAt:now, updatedAt:now };
 }
