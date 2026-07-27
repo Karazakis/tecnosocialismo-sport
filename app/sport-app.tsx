@@ -9,7 +9,7 @@ import { PlacesView } from "./places-view";
 
 const SPORT_ORIGIN="https://sport.tecnosocialismo.com";
 const suiteLinks=[
-  {label:"Home",href:"https://tecnosocialismo.com",mark:"T"},{label:"Iskra",href:"https://iskra.tecnosocialismo.com",mark:"I"},{label:"Rizoma",href:"https://rizoma.tecnosocialismo.com",mark:"R"},{label:"Cloud",href:"https://cloud.tecnosocialismo.com",mark:"C"},{label:"Mail",href:"https://mail.tecnosocialismo.com",mark:"M"},{label:"Video",href:"https://video.tecnosocialismo.com",mark:"V"},{label:"Social",href:"https://social.tecnosocialismo.com",mark:"S"},{label:"Sport",href:SPORT_ORIGIN,mark:"P",current:true},{label:"Messaggi",href:"https://messaggi.tecnosocialismo.com",mark:"G"},{label:"Account",href:"https://login.tecnosocialismo.com",mark:"A"},
+  {label:"Home",href:"https://tecnosocialismo.com",mark:"T"},{label:"Iskra",href:"https://iskra.tecnosocialismo.com",mark:"I"},{label:"Rizoma",href:"https://rizoma.tecnosocialismo.com",mark:"R"},{label:"Cloud",href:"https://cloud.tecnosocialismo.com",mark:"C"},{label:"Mail",href:"https://mail.tecnosocialismo.com",mark:"M"},{label:"Video",href:"https://video.tecnosocialismo.com",mark:"V"},{label:"Social",href:"https://social.tecnosocialismo.com",mark:"S"},{label:"Sport",href:SPORT_ORIGIN,mark:"F",current:true},{label:"Market",href:"https://market.tecnosocialismo.com",mark:"K"},{label:"Lavoro",href:"https://lavoro.tecnosocialismo.com",mark:"L"},{label:"Messaggi",href:"https://messaggi.tecnosocialismo.com",mark:"G"},{label:"Militant",href:"https://militant.tecnosocialismo.com",mark:"P"},{label:"Account",href:"https://login.tecnosocialismo.com",mark:"A"},
 ];
 type View="home"|"learn"|"teach"|"compete"|"sports"|"places"|"ranking";
 type Modal="activity"|"lesson"|"competition"|null;
